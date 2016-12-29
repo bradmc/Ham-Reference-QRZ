@@ -3,7 +3,7 @@ package Ham::Reference::QRZ;
 # --------------------------------------------------------------------------
 # Ham::Reference::QRZ - An interface to the QRZ XML Database Service
 #
-# Copyright (c) 2008-2010 Brad McConahay N8QQ.
+# Copyright (c) 2008-2016 Brad McConahay N8QQ.
 # Cincinnati, Ohio USA
 # --------------------------------------------------------------------------
 
@@ -14,10 +14,10 @@ use LWP::UserAgent;
 use HTML::Entities;
 use vars qw($VERSION);
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
-my $qrz_url = "http://www.qrz.com/xml";
 my $site_name = 'QRZ XML Database Service';
+my $default_api_url = "http://xmldata.qrz.com/xml";
 my $default_timeout = 10;
 
 sub new
@@ -28,6 +28,7 @@ sub new
 	bless $self, $class;
 	$self->_set_agent;
 	$self->set_timeout($args{timeout});
+	$self->set_api_url($args{api_url});
 	$self->set_callsign($args{callsign}) if $args{callsign};
 	$self->set_username($args{username}) if $args{username};
 	$self->set_password($args{password}) if $args{password};
@@ -42,7 +43,7 @@ sub login
 	$self->_clear_errors;
 	if (!$self->{_username}) { die "No QRZ subscription username given" }
 	if (!$self->{_password}) { die "No QRZ subscription password given" }
-	my $url = "$qrz_url/bin/xml?username=$self->{_username};password=$self->{_password};agent=$self->{_agent}";
+	my $url = "$self->{_api_url}/bin/xml?username=$self->{_username}&password=$self->{_password}&agent=$self->{_agent}";
 	my $login = $self->_get_xml($url);
 	if ($login->{Session}->{Error}) {
 		die $login->{Session}->{Error};
@@ -92,6 +93,14 @@ sub set_timeout
 	$self->{_timeout} = $timeout;
 }
 
+sub set_api_url
+{
+	my $self = shift;
+	my $api_url = shift || $default_api_url;
+	$api_url =~ s/\/$//;
+	$self->{_api_url} = $api_url;
+}
+
 sub get_listing
 {
 	my $self = shift;
@@ -105,7 +114,7 @@ sub get_listing
 	if (!$self->{_key}) {
 		$self->login;
 	}
-	my $url = "$qrz_url/bin/xml?s=$self->{_key};callsign=$self->{_callsign}";
+	my $url = "$self->{_api_url}/bin/xml?s=$self->{_key}&callsign=$self->{_callsign}";
 	my $listing = $self->_get_xml($url);
 	if ($listing->{Session}->{Error}) {
 		$self->{is_error} = 1;
@@ -129,7 +138,7 @@ sub get_bio
 	if (!$self->{_key}) {
 		$self->login;
 	}
-	my $url = "$qrz_url/bin/xml?s=$self->{_key};bio=$self->{_callsign}";
+	my $url = "$self->{_api_url}/bin/xml?s=$self->{_key}&bio=$self->{_callsign}";
 	my $bio = $self->_get_xml($url);
 	if ($bio->{Session}->{Error}) {
 		$self->{is_error} = 1;
@@ -172,7 +181,7 @@ sub get_dxcc
 	if (!$self->{_key}) {
 		$self->login;
 	}
-	my $url = "$qrz_url/bin/xml?s=$self->{_key};dxcc=$self->{_callsign}";
+	my $url = "$self->{_api_url}/bin/xml?s=$self->{_key}&dxcc=$self->{_callsign}";
 	my $bio = $self->_get_xml($url);
 	if ($bio->{Session}->{Error}) {
 		$self->{is_error} = 1;
@@ -928,7 +937,7 @@ Ham::Reference::QRZ - An object oriented front end for the QRZ.COM Amateur Radio
 
 =head1 VERSION
 
-Version 0.03
+Version 0.04
 
 =head1 SYNOPSIS
 
@@ -1010,6 +1019,9 @@ This module does not handle any management of reusing session keys at this time.
             timeout   no          an integer of seconds to wait for
                                    the timeout of the xml site
                                    default = 10
+            api_url   no          a string to override the default
+                                   base api url
+                                   default = http://xmldata.qrz.com/xml
             callsign  no          you may specify a callsign to look up
                                    here, or you may do it later with the
                                    set_callsign() method
@@ -1063,6 +1075,13 @@ This module does not handle any management of reusing session keys at this time.
  Function : sets the number of seconds to wait on the xml server before timing out
  Returns  : n/a
  Args     : an integer
+
+=head2 set_api_url()
+
+ Usage    : $qrz->set_api_url( $url );
+ Function : overrides the base url path of the QRZ API URL. Example: http://xmldata.qrz.com/xml
+ Returns  : n/a
+ Args     : a string
 
 =head2 get_listing()
 
@@ -1202,7 +1221,7 @@ Brad McConahay N8QQ, C<< <brad at n8qq.com> >>
 
 =head1 COPYRIGHT AND LICENSE
 
-C<Ham::Reference::QRZ> is Copyright (C) 2008-2010 Brad McConahay N8QQ.
+C<Ham::Reference::QRZ> is Copyright (C) 2008-2016 Brad McConahay N8QQ.
 
 This module is free software; you can redistribute it and/or
 modify it under the terms of the Artistic License 2.0. For
